@@ -1,0 +1,21 @@
+{
+  "name": "ml-service",
+  "version": "1.0.0",
+  "description": "FinSight ML Service for news classification and impact scoring",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "winston": "^3.11.0",
+    "dotenv": "^16.3.1",
+    "body-parser": "^1.20.2",
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
+

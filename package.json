@@ -1,0 +1,34 @@
+{
+  "name": "finsight-platform",
+  "version": "1.0.0",
+  "description": "FinSight - Personal Finance Advisory Platform",
+  "scripts": {
+    "docker:up": "cd docker && docker-compose up -d",
+    "docker:down": "cd docker && docker-compose down",
+    "docker:logs": "cd docker && docker-compose logs -f",
+    "docker:build": "cd docker && docker-compose build",
+    "install:all": "npm run install:gateway && npm run install:auth && npm run install:user && npm run install:news && npm run install:finance && npm run install:advisory && npm run install:notification && npm run install:subscription && npm run install:payment",
+    "install:gateway": "cd api-gateway && npm install",
+    "install:auth": "cd auth-service && npm install",
+    "install:user": "cd user-service && npm install",
+    "install:news": "cd news-service && npm install",
+    "install:finance": "cd finance-engine && npm install",
+    "install:advisory": "cd advisory-service && npm install",
+    "install:notification": "cd notification-service && npm install",
+    "install:subscription": "cd subscription-service && npm install",
+    "install:payment": "cd payment-service && npm install"
+  },
+  "keywords": [
+    "microservices",
+    "nodejs",
+    "express",
+    "kafka",
+    "postgresql",
+    "mongodb",
+    "redis",
+    "fintech"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+
