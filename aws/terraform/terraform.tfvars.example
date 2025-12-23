@@ -1,0 +1,30 @@
+# AWS Configuration
+aws_region = "us-east-1"
+project_name = "finsight"
+environment = "production"
+
+# Network Configuration
+vpc_cidr = "10.0.0.0/16"
+
+# RDS Configuration
+rds_instance_class = "db.t3.medium"
+rds_allocated_storage = 100
+rds_multi_az = true
+
+# ElastiCache Configuration
+redis_node_type = "cache.t3.medium"
+
+# MSK Configuration
+kafka_instance_type = "kafka.t3.small"
+kafka_storage_size = 100
+
+# SSL Certificate (create in ACM first)
+certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxx-xxxxx-xxxxx"
+
+# Secrets (use AWS Secrets Manager or set via environment variables)
+jwt_secret = "your-super-secret-jwt-key-change-this"
+db_password = "your-secure-database-password"
+
+# Logging
+log_retention_days = 30
+
