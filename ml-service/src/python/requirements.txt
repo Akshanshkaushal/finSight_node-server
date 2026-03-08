@@ -1,0 +1,21 @@
+# FinBERT ML Service - Python Dependencies
+
+# Core Framework
+flask==3.0.0
+flask-cors==4.0.0
+
+# Machine Learning & NLP
+torch>=2.6.0
+transformers>=4.36.2
+numpy>=1.26.2
+
+# Utilities
+python-dotenv==1.0.0
+
+# Optional: For better performance
+# sentencepiece==0.1.99  # For some tokenizers
+# accelerate==0.25.0     # For faster model loading
+
+# Development
+# pytest==7.4.3
+# requests==2.31.0

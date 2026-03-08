@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # PostgreSQL Databases
@@ -183,9 +183,10 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka:9092"]
+      test:
+        ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka:9092"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -277,6 +278,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       KAFKA_BROKERS: kafka:9092
+      ML_SERVICE_URL: http://ml-service:3009
+      USE_ML_SERVICE: "true"
     depends_on:
       mongodb:
         condition: service_healthy
@@ -284,6 +287,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      ml-service:
+        condition: service_started
     networks:
       - finsight-network
 
@@ -430,8 +435,34 @@ services:
       - "3009:3009"
     environment:
       PORT: 3009
+      FINBERT_URL: http://finbert-service:5000
+      USE_FINBERT: "true"
+    depends_on:
+      - finbert-service
     networks:
       - finsight-network
+
+  finbert-service:
+    build:
+      context: ../ml-service/src/python
+      dockerfile: Dockerfile
+    container_name: finsight-finbert-service
+    ports:
+      - "5000:5000"
+    environment:
+      FINBERT_PORT: 5000
+      FINBERT_HOST: 0.0.0.0
+    networks:
+      - finsight-network
+    # Mount a volume for model caching (optional but recommended)
+    volumes:
+      - finbert-models:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
 
 networks:
   finsight-network:
@@ -446,4 +477,4 @@ volumes:
   postgres-payments-data:
   mongodb-data:
   redis-data:
-
+  finbert-models:

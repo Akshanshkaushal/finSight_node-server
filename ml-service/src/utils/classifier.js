@@ -1,17 +1,54 @@
-const { NEWS_CATEGORIES, IMPACT_LEVELS } = require('../../common/enums');
-const axios = require('axios');
+const { NEWS_CATEGORIES, IMPACT_LEVELS } = require("../../common/enums");
+const axios = require("axios");
 
 const modelUrl = process.env.ML_MODEL_URL; // optional external classifier endpoint
 const modelApiKey = process.env.ML_MODEL_API_KEY; // optional
 const llmUrl = process.env.ML_LLM_URL; // optional LLM endpoint for impact
 const llmApiKey = process.env.ML_LLM_API_KEY; // optional
 
+// FinBERT service configuration
+const finbertUrl = process.env.FINBERT_URL || "http://localhost:5000";
+const useFinbert = process.env.USE_FINBERT === "true" || true; // Enable by default
+
 const keywordMap = {
-  [NEWS_CATEGORIES.RBI_POLICY]: ['rbi', 'repo rate', 'monetary policy', 'crr', 'slr', 'policy'],
-  [NEWS_CATEGORIES.INFLATION]: ['inflation', 'cpi', 'wpi', 'price rise', 'cost of living'],
-  [NEWS_CATEGORIES.INTEREST_RATE]: ['interest rate', 'lending rate', 'borrowing rate', 'fd rate', 'loan rate'],
-  [NEWS_CATEGORIES.CURRENCY]: ['rupee', 'dollar', 'exchange rate', 'forex', 'currency'],
-  [NEWS_CATEGORIES.MARKET_EVENT]: ['stock market', 'sensex', 'nifty', 'market crash', 'rally', 'bull', 'bear']
+  [NEWS_CATEGORIES.RBI_POLICY]: [
+    "rbi",
+    "repo rate",
+    "monetary policy",
+    "crr",
+    "slr",
+    "policy",
+  ],
+  [NEWS_CATEGORIES.INFLATION]: [
+    "inflation",
+    "cpi",
+    "wpi",
+    "price rise",
+    "cost of living",
+  ],
+  [NEWS_CATEGORIES.INTEREST_RATE]: [
+    "interest rate",
+    "lending rate",
+    "borrowing rate",
+    "fd rate",
+    "loan rate",
+  ],
+  [NEWS_CATEGORIES.CURRENCY]: [
+    "rupee",
+    "dollar",
+    "exchange rate",
+    "forex",
+    "currency",
+  ],
+  [NEWS_CATEGORIES.MARKET_EVENT]: [
+    "stock market",
+    "sensex",
+    "nifty",
+    "market crash",
+    "rally",
+    "bull",
+    "bear",
+  ],
 };
 
 function classify(text) {
@@ -51,35 +88,103 @@ async function classifyWithModel(text, credibility = 80) {
       { text, credibility },
       {
         timeout: 5000,
-        headers: modelApiKey ? { Authorization: `Bearer ${modelApiKey}` } : {}
-      }
+        headers: modelApiKey ? { Authorization: `Bearer ${modelApiKey}` } : {},
+      },
     );
     return resp.data?.data || resp.data || null;
   } catch (err) {
-    console.error('External model classification failed:', err.message);
+    console.error("External model classification failed:", err.message);
     return null;
   }
 }
 
-async function classifyAdvanced({ title = '', content = '', credibility = 80 }) {
-  const text = `${title} ${content}`.trim(); 
+async function classifyWithFinBERT({
+  title = "",
+  content = "",
+  credibility = 80,
+}) {
+  if (!useFinbert) return null;
+
+  try {
+    const resp = await axios.post(
+      `${finbertUrl}/classify`,
+      { title, content, credibility },
+      {
+        timeout: 10000, // FinBERT may take longer for inference
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+
+    if (resp.data?.success && resp.data?.data) {
+      const result = resp.data.data;
+      return {
+        category: result.category,
+        impactLevel: result.impactLevel,
+        keywords: result.keywords || [],
+        sentiment: result.sentiment,
+        confidence: result.confidence,
+        sentimentScores: result.sentimentScores,
+      };
+    }
+    return null;
+  } catch (err) {
+    console.error("FinBERT classification failed:", err.message);
+    // If FinBERT service is unavailable, return null to use fallback
+    return null;
+  }
+}
+
+async function classifyAdvanced({
+  title = "",
+  content = "",
+  credibility = 80,
+}) {
+  // Try FinBERT first (AI-powered classification)
+  const finbertResult = await classifyWithFinBERT({
+    title,
+    content,
+    credibility,
+  });
+  if (finbertResult?.category && finbertResult?.impactLevel) {
+    return {
+      category: finbertResult.category,
+      impactLevel: finbertResult.impactLevel,
+      keywords: finbertResult.keywords || [],
+      sentiment: finbertResult.sentiment,
+      confidence: finbertResult.confidence,
+      sentimentScores: finbertResult.sentimentScores,
+    };
+  }
+
+  // Try external model URL (if configured)
+  const text = `${title} ${content}`.trim();
   const modelResult = await classifyWithModel(text, credibility);
   if (modelResult?.category && modelResult?.impactLevel) {
     return {
       category: modelResult.category,
       impactLevel: modelResult.impactLevel,
-      keywords: modelResult.keywords || []
+      keywords: modelResult.keywords || [],
     };
   }
-  // Fallback heuristic
+
+  // Fallback to keyword-based heuristic classification
   const category = classify(text);
   const keywords = extractKeywords(text, category);
   let impactLevel = impact(category, credibility, keywords);
+
+  // Try LLM for impact scoring (if configured)
   const llmImpact = await impactWithLLM(text, category, credibility);
   if (llmImpact && Object.values(IMPACT_LEVELS).includes(llmImpact)) {
     impactLevel = llmImpact;
   }
-  return { category, impactLevel, keywords };
+
+  return {
+    category,
+    impactLevel,
+    keywords,
+    sentiment: "neutral", // Default for fallback
+    confidence: 0.5,
+  };
 }
 
 async function impactWithLLM(text, category, credibility = 80) {
@@ -91,20 +196,26 @@ async function impactWithLLM(text, category, credibility = 80) {
       { prompt },
       {
         timeout: 6000,
-        headers: llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}
-      }
+        headers: llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {},
+      },
     );
     const raw = resp.data?.data || resp.data || {};
-    const impactLevel = raw.impactLevel || raw.impact || raw.result?.impactLevel;
+    const impactLevel =
+      raw.impactLevel || raw.impact || raw.result?.impactLevel;
     if (impactLevel && Object.values(IMPACT_LEVELS).includes(impactLevel)) {
       return impactLevel;
     }
     return null;
   } catch (err) {
-    console.error('LLM impact scoring failed:', err.message);
+    console.error("LLM impact scoring failed:", err.message);
     return null;
   }
 }
 
-module.exports = { classify, impact, extractKeywords, classifyAdvanced };
-
+module.exports = {
+  classify,
+  impact,
+  extractKeywords,
+  classifyAdvanced,
+  classifyWithFinBERT,
+};
