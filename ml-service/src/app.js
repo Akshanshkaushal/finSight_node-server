@@ -1,7 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { classifyAdvanced } = require('./utils/classifier');
-const { createLogger } = require('../../common/utils/logger');
+const { createLogger } = require('../common/utils/logger');
 const config = require('./config');
 
 const app = express();

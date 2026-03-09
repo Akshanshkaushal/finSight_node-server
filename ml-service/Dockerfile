@@ -2,10 +2,15 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+# Copy package files
+COPY ml-service/package*.json ./
 RUN npm install --production
 
-COPY . .
+# Copy ml-service source
+COPY ml-service/src ./src
+
+# Copy common into ml-service directory (as sibling to src)
+COPY common ./common
 
 EXPOSE 3009
 
